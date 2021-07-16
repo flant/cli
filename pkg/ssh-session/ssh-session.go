@@ -97,7 +97,7 @@ func (s *Session) RenderBashRCToFile() {
 		}
 	}
 
-	data := fmt.Sprintf("alias ssh='ssh -o UserKnownHostsFile=%s -F %s';\n. ~/.bashrc;\n", s.KnownHostsFile.Name(), s.SSHConfigFile.Name())
+	data := fmt.Sprintf("alias ssh='ssh -o UserKnownHostsFile=%s -F %s';\n. ~/.bashrc;\nPS1=\"[flint] $PS1\"", s.KnownHostsFile.Name(), s.SSHConfigFile.Name())
 	s.BashRCFile.Seek(0, 0)
 	s.BashRCFile.Write([]byte(data))
 }

@@ -60,13 +60,10 @@ func (sf *ServerFilter) RenderURIArgs() string {
 }
 
 func (vs *VaultSession) Init() {
-	// подключиться в authd и получить токен
-	// запустить рутинку, которая будет обновлять SessionToken через vault
-
 	authdClient := authd.NewAuthdClient("/run/authd.sock")
 
 	req := v1.NewLoginRequest().
-		WithPolicies(v1.NewPolicy("*", map[string]string{})).
+		WithRoles(v1.NewRoleWithClaim("*", map[string]string{})).
 		WithServerType(v1.AuthServer)
 
 	err := authdClient.OpenVaultSession(req)

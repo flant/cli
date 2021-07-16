@@ -138,7 +138,7 @@ func (vs *VaultSession) RequestServers(tenant *iam.Tenant, project *iam.Project)
 		requestPath = fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/query_server", tenant.UUID)
 	}
 
-	vaultServersResponseBytes, err := vs.Request("LIST", requestPath)
+	vaultServersResponseBytes, err := vs.Request("GET", requestPath)
 	if err != nil {
 		return []iam.Server{}, err
 	}

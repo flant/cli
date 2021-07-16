@@ -81,7 +81,7 @@ func (s *Server) RenderSSHConfigEntry(user *User) string {
 	tmpl, err := template.New("ssh_config_entry").Parse(`
 Host {{.Server.Project.Identifier}}.{{.Server.Identifier}}
   ForwardAgent yes
-  User .User.Identifier
+  User {{.User.Identifier}}
   Hostname {{.Server.SecureManifest.ConnectionInfo.Hostname}}
 {{- if .Server.SecureManifest.ConnectionInfo.Port }}
   Port {{.Server.SecureManifest.ConnectionInfo.Port}}

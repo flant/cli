@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"gopkg.in/square/go-jose.v2"
+	jose "github.com/square/go-jose/v3"
 )
 
 type Tenant struct {

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"main/pkg/iam"
 
+	v1 "github.com/flant/negentropy/authd/pkg/api/v1"
+
+	"github.com/flant/negentropy/authd"
 	vault_api "github.com/hashicorp/vault/api"
 )
 
@@ -55,19 +57,23 @@ func (vs *VaultSession) Init() {
 	// подключиться в authd и получить токен
 	// запустить рутинку, которая будет обновлять SessionToken через vault
 
-	// TODO переделать на authd
-	cfg := vault_api.DefaultConfig()
-	cfg.Address = "http://127.0.0.1:8200"
+	authdClient := authd.NewAuthdClient("/run/authd.sock")
 
-	resCl, err := vault_api.NewClient(cfg)
+	req := v1.NewLoginRequest().
+		WithPolicies(v1.NewPolicy("*", map[string]string{})).
+		WithServerType(v1.AuthServer)
+
+	err := authdClient.OpenVaultSession(req)
 	if err != nil {
 		panic(err)
 	}
-	dat, _ := ioutil.ReadFile("/tmp/token_root")
 
-	resCl.SetToken(string(dat))
+	vaultClient, err := authdClient.NewVaultClient()
+	if err != nil {
+		panic(err)
+	}
 
-	vs.Client = resCl
+	vs.Client = vaultClient
 }
 
 func (vs *VaultSession) Request(method, requestPath string) ([]byte, error) {

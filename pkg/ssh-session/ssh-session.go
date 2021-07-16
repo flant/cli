@@ -187,7 +187,6 @@ func (s *Session) StartSSHAgent() {
 func (s *Session) StartShell() {
 	s.RenderBashRCToFile()
 
-	ps1 := "[flint] " + os.Getenv("PS1")
 	os.Setenv("SSH_AUTH_SOCK", s.SSHAgentSocketPath)
 	os.Setenv("FLINT_SESSION_UUID", s.UUID)
 

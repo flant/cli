@@ -167,7 +167,7 @@ func (vs *VaultSession) RequestServers(tenant *iam.Tenant, project *iam.Project)
 }
 
 func (vs *VaultSession) RequestServerToken(server *iam.Server) (string, error) {
-	vaultServerTokenResponseBytes, err := vs.Request("GET", fmt.Sprintf("http://127.0.0.1:8200/v1/auth/flant_iam_auth/tenant/%s/project/%s/server/%s", server.Project.Tenant.UUID, server.Project.UUID, server.UUID))
+	vaultServerTokenResponseBytes, err := vs.Request("GET", fmt.Sprintf("/v1/auth/flant_iam_auth/tenant/%s/project/%s/server/%s", server.Project.Tenant.UUID, server.Project.UUID, server.UUID))
 	if err != nil {
 		return "", err
 	}

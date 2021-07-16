@@ -49,8 +49,17 @@ func (s *Session) SyncServersFromVault() {
 	if err != nil {
 		panic(err)
 	}
+
+	for i := range sl.Servers {
+		token, err := s.VaultSession.RequestServerToken(&sl.Servers[i])
+		if err != nil {
+			panic(err)
+		}
+		sl.Servers[i].SetSecureManifest(token)
+	}
+
 	s.ServerList = sl
-	fmt.Println(sl.Projects[0].Tenant.UUID)
+	//fmt.Println(sl.Projects[0].Tenant.UUID)
 }
 
 func (s *Session) RenderKnownHostsToFile() {

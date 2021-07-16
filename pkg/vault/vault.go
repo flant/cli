@@ -47,6 +47,12 @@ type VaultServersResponse struct {
 	} `json:"data"`
 }
 
+type VaultServerTokenResponse struct {
+	Data struct {
+		Token string `json:"token"`
+	} `json:"data"`
+}
+
 func (sf *ServerFilter) RenderURIArgs() string {
 	// ?name[]=db1&name[]=db-2&...
 	// labelselector=...
@@ -163,6 +169,21 @@ func (vs *VaultSession) RequestServers(tenant *iam.Tenant, project *iam.Project)
 	return servers, nil
 }
 
+func (vs *VaultSession) RequestServerToken(server *iam.Server) (string, error) {
+	vaultServerTokenResponseBytes, err := vs.Request("GET", fmt.Sprintf("http://127.0.0.1:8200/v1/auth/flant_iam_auth/tenant/%s/project/%s/server/%s", server.Project.Tenant.UUID, server.Project.UUID, server.UUID))
+	if err != nil {
+		return "", err
+	}
+
+	var vaultServerTokenResponse VaultServerTokenResponse
+	err = json.Unmarshal(vaultServerTokenResponseBytes, &vaultServerTokenResponse)
+	if err != nil {
+		return "", err
+	}
+
+	return vaultServerTokenResponse.Data.Token, nil
+}
+
 func (vs *VaultSession) GetSSHUser() iam.User {
 	// достать из vault инфу про текущего юзера
 	return iam.User{UUID: "uuu", Identifier: "a.polovov"}
@@ -192,12 +213,6 @@ func (vs *VaultSession) getTenantByIdentifier(identifier string) (iam.Tenant, er
 	return iam.Tenant{}, nil
 }
 
-func (vs *VaultSession) getServerManifest(server iam.Server) iam.ServerManifest {
-	// GET /tenant/<server.Tenant.UUID>/project/<server.Project.UUID>/server/<server.UUID>
-	// return manifest
-	return iam.ServerManifest{}
-}
-
 func (vs *VaultSession) QueryServer(filter ServerFilter) (iam.ServerList, error) {
 	// sl.Tenant = vs.getTenantByIdentifier(filter.TenantIdentifier)
 	// если в фильтре есть ограничения по проектам:
@@ -208,7 +223,7 @@ func (vs *VaultSession) QueryServer(filter ServerFilter) (iam.ServerList, error)
 	//   LIST /tenant/<tenant.UUID>/query_server?<filter.RenderURIArgs()>
 
 	// == имеем ServerList, осталось заполнить манифесты
-	// для каждого сервера server.Manifest = vs.getServerManifest(server)
+	// для каждого сервера server.ConnectionInfo = vs.getServerManifest(server)
 	// если есть bastion, то как-то его надо заинклудить
 	// return serverList
 
@@ -263,7 +278,7 @@ func (vs *VaultSession) QueryServer(filter ServerFilter) (iam.ServerList, error)
 	//}
 	//
 	//sl.Projects = append(sl.Projects, iam.Project{UUID: "bbb", Identifier: "myproject", Tenant: &sl.Tenant})
-	//sl.Servers = append(sl.Servers, iam.Server{Identifier: "node-1", UUID: "ccc", Project: &sl.Projects[0], Manifest: iam.ServerManifest{Hostname: "95.216.34.23", Port: 2202}})
+	//sl.Servers = append(sl.Servers, iam.Server{Identifier: "node-1", UUID: "ccc", Project: &sl.Projects[0], ConnectionInfo: iam.ServerConnectionInfo{Hostname: "95.216.34.23", Port: 2202}})
 	return sl, nil
 }
 

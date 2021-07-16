@@ -3,8 +3,11 @@ package iam
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"html/template"
+
+	"gopkg.in/square/go-jose.v2"
 )
 
 type Tenant struct {
@@ -25,15 +28,19 @@ type Server struct {
 	Identifier      string `json:"identifier"`
 	Project         *Project
 	ResourceVersion int64 `json:"resource_version"`
-	JWTManifest     string
-	Manifest        ServerManifest
+	Token           string
+	SecureManifest  ServerSecureManifest
 }
 
-type ServerManifest struct {
-	Hostname    string
-	Port        int64
-	Fingerprint string // ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBD50RKBgjQ7YlvVqNosJ3ovmaNyor+riouDuZvwgOXARr2WSIf4tt9DR1k3X7k1+oTZJWtE7w3GJnDMzDaiw7gc=
-	Bastion     *Server
+// TODO there are more fields
+type ServerSecureManifest struct {
+	Fingerprint    string `json:"fingerprint"`
+	Identifier     string `json:"identifier"`
+	ConnectionInfo struct {
+		Hostname string  `json:"hostname"`
+		Port     int64   `json:"port"`
+		Bastion  *Server // TODO
+	} `json:"connection_info"`
 }
 
 type ServerList struct {
@@ -55,10 +62,10 @@ func (s *Server) GenerateUserPrincipal(user User) string {
 
 func (s *Server) RenderKnownHostsRow() string {
 	// TODO Shouldn't it be in ssh-ssh-session.go?
-	if s.Manifest.Port == 22 {
-		return fmt.Sprintf("%s %s\n", s.Manifest.Hostname, s.Manifest.Fingerprint)
+	if s.SecureManifest.ConnectionInfo.Port == 22 {
+		return fmt.Sprintf("%s %s\n", s.SecureManifest.ConnectionInfo.Hostname, s.SecureManifest.Fingerprint)
 	} else {
-		return fmt.Sprintf("[%s]:%d %s\n", s.Manifest.Hostname, s.Manifest.Port, s.Manifest.Fingerprint)
+		return fmt.Sprintf("[%s]:%d %s\n", s.SecureManifest.ConnectionInfo.Hostname, s.SecureManifest.ConnectionInfo.Port, s.SecureManifest.Fingerprint)
 	}
 }
 
@@ -69,12 +76,12 @@ func (s *Server) RenderSSHConfigEntry() string {
 	tmpl, err := template.New("ssh_config_entry").Parse(`
 Host {{.Project.Identifier}}.{{.Identifier}}
   ForwardAgent yes
-  Hostname {{.Manifest.Hostname}}
-{{- if .Manifest.Port }}
-  Port {{.Manifest.Port}}
+  Hostname {{.SecureManifest.ConnectionInfo.Hostname}}
+{{- if .SecureManifest.ConnectionInfo.Port }}
+  Port {{.SecureManifest.ConnectionInfo.Port}}
 {{- end }}
-{{- if .Manifest.Bastion }}
-  ProxyCommand ssh {{.Manifest.Bastion.Project.Identifier}}.{{.Manifest.Bastion.Identifier}} -W %h:%p
+{{- if .SecureManifest.ConnectionInfo.Bastion }}
+  ProxyCommand ssh {{.SecureManifest.ConnectionInfo.Bastion.Project.Identifier}}.{{.SecureManifest.ConnectionInfo.Bastion.Identifier}} -W %h:%p
 {{- end }}
 
 `)
@@ -87,4 +94,22 @@ Host {{.Project.Identifier}}.{{.Identifier}}
 		panic(err)
 	}
 	return entryBuffer.String()
+}
+
+func (s *Server) SetSecureManifest(token string) error {
+	// TODO check signature
+	jose.ParseSigned(token)
+
+	jwt, err := jose.ParseSigned(token)
+	if err != nil {
+		return err
+	}
+
+	payloadBytes := jwt.UnsafePayloadWithoutVerification()
+
+	err = json.Unmarshal(payloadBytes, &s.SecureManifest)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -27,7 +27,7 @@ type Server struct {
 	ProjectUUID     string `json:"project_uuid"`
 	Identifier      string `json:"identifier"`
 	Project         *Project
-	ResourceVersion int64 `json:"resource_version"`
+	ResourceVersion string `json:"resource_version"`
 	Token           string
 	SecureManifest  ServerSecureManifest
 }

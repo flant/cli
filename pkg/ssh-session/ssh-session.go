@@ -91,7 +91,7 @@ func (s *Session) RenderSSHConfigToFile() {
 	}
 	s.SSHConfigFile.Seek(0, 0)
 	for _, server := range s.ServerList.Servers {
-		s.SSHConfigFile.Write([]byte(server.RenderSSHConfigEntry()))
+		s.SSHConfigFile.Write([]byte(server.RenderSSHConfigEntry(&s.User)))
 	}
 }
 

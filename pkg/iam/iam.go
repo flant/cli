@@ -1,4 +1,4 @@
-package api
+package iam
 
 import (
 	"bytes"
@@ -8,23 +8,25 @@ import (
 )
 
 type Tenant struct {
-	UUID       string
-	Identifier string
+	UUID       string `json:"uuid"`
+	Identifier string `json:"identifier"`
 }
 
 type Project struct {
-	UUID       string
-	Identifier string
+	UUID       string `json:"uuid"`
+	Identifier string `json:"identifier"`
 	Tenant     *Tenant
 }
 
 type Server struct {
-	UUID        string
-	Identifier  string
-	Project     *Project
-	Version     int64
-	JWTManifest string
-	Manifest    ServerManifest
+	UUID            string `json:"uuid"`
+	TenantUUID      string `json:"tenant_uuid"`
+	ProjectUUID     string `json:"project_uuid"`
+	Identifier      string `json:"identifier"`
+	Project         *Project
+	ResourceVersion int64 `json:"resource_version"`
+	JWTManifest     string
+	Manifest        ServerManifest
 }
 
 type ServerManifest struct {
@@ -52,7 +54,7 @@ func (s *Server) GenerateUserPrincipal(user User) string {
 }
 
 func (s *Server) RenderKnownHostsRow() string {
-	// TODO Shouldn't it be in session.go?
+	// TODO Shouldn't it be in ssh-ssh-session.go?
 	if s.Manifest.Port == 22 {
 		return fmt.Sprintf("%s %s\n", s.Manifest.Hostname, s.Manifest.Fingerprint)
 	} else {
@@ -61,7 +63,7 @@ func (s *Server) RenderKnownHostsRow() string {
 }
 
 func (s *Server) RenderSSHConfigEntry() string {
-	// TODO Shouldn't it be in session.go?
+	// TODO Shouldn't it be in ssh-ssh-session.go?
 	entryBuffer := bytes.Buffer{}
 
 	tmpl, err := template.New("ssh_config_entry").Parse(`

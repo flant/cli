@@ -1,11 +1,11 @@
-package session
+package ssh_session
 
 import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
 	"log"
-	"main/pkg/api"
+	"main/pkg/iam"
 	"main/pkg/vault"
 	"net"
 	"os"
@@ -23,8 +23,8 @@ import (
 
 type Session struct {
 	UUID               string
-	User               api.User
-	ServerList         api.ServerList
+	User               iam.User
+	ServerList         iam.ServerList
 	ServerFilter       vault.ServerFilter
 	VaultSession       vault.VaultSession
 	EnvSSHAuthSock     string
@@ -45,7 +45,12 @@ func (s *Session) Destroy() {
 }
 
 func (s *Session) SyncServersFromVault() {
-	s.ServerList = s.VaultSession.QueryServer(s.ServerFilter)
+	sl, err := s.VaultSession.QueryServer(s.ServerFilter)
+	if err != nil {
+		panic(err)
+	}
+	s.ServerList = sl
+	fmt.Println(sl.Projects[0].Tenant.UUID)
 }
 
 func (s *Session) RenderKnownHostsToFile() {
@@ -97,7 +102,7 @@ func (s *Session) RenderBashRCToFile() {
 	s.BashRCFile.Write([]byte(data))
 }
 
-func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []api.Server) agent.AddedKey {
+func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []iam.Server) agent.AddedKey {
 	principals := []string{}
 	identifiers := []string{}
 
@@ -112,9 +117,9 @@ func (s *Session) generateAndSignSSHCertificateSetForServerBucket(servers []api.
 		panic(err.Error())
 	}
 
-	vaultReq := vault.VaultSSHSignRequest{
-		PublicKey:       string(ssh.MarshalAuthorizedKey(pubkey)),
-		ValidPrincipals: strings.Join(principals, ","),
+	vaultReq := map[string]interface{}{
+		"public_key":       string(ssh.MarshalAuthorizedKey(pubkey)),
+		"valid_principals": strings.Join(principals, ","),
 	}
 
 	signedPublicSSHCertBytes := s.VaultSession.SignPublicSSHCertificate(vaultReq)
@@ -180,12 +185,12 @@ func (s *Session) StartSSHAgent() {
 }
 
 func (s *Session) StartShell() {
-	// установить SSH_AUTH_SOCK
 	s.RenderBashRCToFile()
 
 	ps1 := "[flint] " + os.Getenv("PS1")
 	os.Setenv("PS1", ps1)
 	os.Setenv("SSH_AUTH_SOCK", s.SSHAgentSocketPath)
+	os.Setenv("FLINT_SESSION_UUID", s.UUID)
 
 	cmd := exec.Command("/bin/bash", "--rcfile", s.BashRCFile.Name())
 	cmd.Stdin = os.Stdin
@@ -213,8 +218,12 @@ func (s *Session) Go() {
 	os.MkdirAll(Workdir, os.ModePerm)
 	s.UUID = uuid.Must(uuid.NewRandom()).String()
 
+	s.ServerFilter = vault.ServerFilter{
+		TenantIdentifier: "1tv",
+	}
+
 	s.VaultSession.Init()
-	s.User = s.VaultSession.GetUser()
+	s.User = s.VaultSession.GetSSHUser()
 	s.StartSSHAgent()
 
 	s.syncRoutine()

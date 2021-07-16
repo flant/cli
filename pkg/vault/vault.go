@@ -183,7 +183,7 @@ func (vs *VaultSession) RequestServerToken(server *iam.Server) (string, error) {
 
 func (vs *VaultSession) GetSSHUser() iam.User {
 	// достать из vault инфу про текущего юзера
-	return iam.User{UUID: "uuu", Identifier: "a.polovov"}
+	return iam.User{UUID: "uuu", Identifier: "fluser"}
 }
 
 func (vs *VaultSession) getTenantByIdentifier(identifier string) (iam.Tenant, error) {

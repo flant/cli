@@ -55,6 +55,11 @@ type User struct {
 	// ...
 }
 
+type TPLContextSSHConfig struct {
+	Server *Server
+	User   *User
+}
+
 func (s *Server) GenerateUserPrincipal(user User) string {
 	hash := sha256.Sum256([]byte(s.UUID + user.UUID))
 	return fmt.Sprintf("%x", hash)
@@ -69,19 +74,20 @@ func (s *Server) RenderKnownHostsRow() string {
 	}
 }
 
-func (s *Server) RenderSSHConfigEntry() string {
+func (s *Server) RenderSSHConfigEntry(user *User) string {
 	// TODO Shouldn't it be in ssh-ssh-session.go?
-	entryBuffer := bytes.Buffer{}
 
+	entryBuffer := bytes.Buffer{}
 	tmpl, err := template.New("ssh_config_entry").Parse(`
-Host {{.Project.Identifier}}.{{.Identifier}}
+Host {{.Server.Project.Identifier}}.{{.Server.Identifier}}
   ForwardAgent yes
-  Hostname {{.SecureManifest.ConnectionInfo.Hostname}}
-{{- if .SecureManifest.ConnectionInfo.Port }}
-  Port {{.SecureManifest.ConnectionInfo.Port}}
+  User .User.Identifier
+  Hostname {{.Server.SecureManifest.ConnectionInfo.Hostname}}
+{{- if .Server.SecureManifest.ConnectionInfo.Port }}
+  Port {{.Server.SecureManifest.ConnectionInfo.Port}}
 {{- end }}
-{{- if .SecureManifest.ConnectionInfo.Bastion }}
-  ProxyCommand ssh {{.SecureManifest.ConnectionInfo.Bastion.Project.Identifier}}.{{.SecureManifest.ConnectionInfo.Bastion.Identifier}} -W %h:%p
+{{- if .Server.SecureManifest.ConnectionInfo.Bastion }}
+  ProxyCommand ssh {{.Server.SecureManifest.ConnectionInfo.Bastion.Project.Identifier}}.{{.Server.SecureManifest.ConnectionInfo.Bastion.Identifier}} -W %h:%p
 {{- end }}
 
 `)
@@ -89,7 +95,12 @@ Host {{.Project.Identifier}}.{{.Identifier}}
 		panic(err)
 	}
 
-	err = tmpl.Execute(&entryBuffer, s)
+	context := TPLContextSSHConfig{
+		User:   user,
+		Server: s,
+	}
+
+	err = tmpl.Execute(&entryBuffer, context)
 	if err != nil {
 		panic(err)
 	}
